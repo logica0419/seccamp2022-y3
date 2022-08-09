@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type WorkerState struct {
@@ -31,6 +33,9 @@ type Worker struct {
 
 	term   int
 	leader string
+
+	voteDuration time.Duration
+	voteTimer    *time.Timer
 }
 
 type WorkerOption func(*Worker)
@@ -120,7 +125,7 @@ func (w *Worker) State() WorkerState {
 }
 
 func (w *Worker) PingTicker() {
-	t := time.NewTimer(10 * time.Millisecond)
+	t := time.NewTicker(10 * time.Millisecond)
 
 	for {
 		<-t.C
@@ -128,15 +133,48 @@ func (w *Worker) PingTicker() {
 			continue
 		}
 
+		eg := errgroup.Group{}
 		for k := range w.ConnectedPeers() {
-			reply := PingReply{}
+			k := k
 
-			err := w.RemoteCall(k, "Worker.Ping", PingArgs{}, &reply)
-			if err != nil || !reply.OK {
-				w.SetLeader("")
-			}
+			eg.Go(func() error {
+				reply := PingReply{}
+
+				err := w.RemoteCall(k, "Worker.Ping", PingArgs{w.Name(), w.Term()}, &reply)
+				if err != nil {
+					return err
+				}
+				if !reply.OK {
+					return fmt.Errorf("already not leader")
+				}
+
+				return nil
+			})
+		}
+
+		err := eg.Wait()
+		if err != nil {
+			w.LockMutex()
+			w.SetLeader("")
+			w.ResetVoteTimer()
+			w.UnlockMutex()
 		}
 	}
+}
+
+func (w *Worker) VoteTimer() {
+	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()/50) + 10) * time.Millisecond
+	w.voteTimer = time.NewTimer(w.voteDuration)
+
+	for {
+		<-w.voteTimer.C
+
+		// TODO: Voteを実装
+	}
+}
+
+func (w *Worker) ResetVoteTimer() {
+	w.voteTimer.Reset(w.voteDuration)
 }
 
 func (w *Worker) Connect(name, addr string) (err error) {

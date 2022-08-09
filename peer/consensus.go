@@ -16,10 +16,18 @@ type PingReply struct {
 }
 
 func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
+	if w.Leader() == "" {
+		w.SetLeader(args.Leader)
+	}
+
 	if args.Leader != w.Leader() || args.Term < w.Term() {
 		reply.OK = false
 		return nil
 	}
+
+	w.LockMutex()
+	defer w.UnlockMutex()
+	w.ResetVoteTimer()
 
 	reply.OK = true
 	return nil
