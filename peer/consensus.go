@@ -49,6 +49,15 @@ type UpdateStateReply struct {
 }
 
 func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) error {
+	if !w.IsLeader() {
+		err := w.RemoteCall(w.Leader(), "Worker.UpdateStateWithoutSync", args, &UpdateStateReply{})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
 	eg := errgroup.Group{}
 
 	eg.Go(func() error {

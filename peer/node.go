@@ -30,7 +30,9 @@ type Node struct {
 	worker *Worker
 	quit   chan interface{}
 
-	delay   int
+	delay int
+
+	leader string
 }
 
 type NodeOption func(*Node)
@@ -60,6 +62,10 @@ func (n *Node) Addr() string {
 
 func (n *Node) Rand() *rand.Rand {
 	return n.rnd
+}
+
+func (n *Node) Leader() string {
+	return n.leader
 }
 
 func (n *Node) Connect(name, addr string) error {
