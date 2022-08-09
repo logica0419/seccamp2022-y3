@@ -16,6 +16,9 @@ type PingReply struct {
 }
 
 func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
+	w.LockMutex()
+	defer w.UnlockMutex()
+
 	if w.Leader() == "" {
 		w.SetLeader(args.Leader)
 	}
@@ -25,8 +28,7 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 		return nil
 	}
 
-	w.LockMutex()
-	defer w.UnlockMutex()
+	w.SetTerm(args.Term)
 	w.ResetVoteTimer()
 
 	reply.OK = true

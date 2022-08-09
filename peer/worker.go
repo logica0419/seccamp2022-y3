@@ -44,6 +44,8 @@ func NewWorker(name string) *Worker {
 	w := new(Worker)
 	w.name = name
 	w.logs = []*WorkerLog{}
+	w.term = 0
+
 	return w
 }
 
@@ -73,6 +75,10 @@ func (w *Worker) LinkNode(n *Node) {
 
 func (w *Worker) Term() int {
 	return w.term
+}
+
+func (w *Worker) SetTerm(term int) {
+	w.term = term
 }
 
 func (w *Worker) Leader() string {
