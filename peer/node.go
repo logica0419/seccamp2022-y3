@@ -68,6 +68,18 @@ func (n *Node) Leader() string {
 	return n.leader
 }
 
+func (n *Node) decideLeader() {
+	if n.leader == "" || n.leader > n.worker.Name() {
+		n.leader = n.worker.Name()
+	}
+
+	for k := range n.peers {
+		if n.leader > k {
+			n.leader = k
+		}
+	}
+}
+
 func (n *Node) Connect(name, addr string) error {
 	if n.IsConnectedTo(name) {
 		return fmt.Errorf("Peer '%s' is already reserved", name)
@@ -80,6 +92,8 @@ func (n *Node) Connect(name, addr string) error {
 		return err
 	}
 	n.peers[name] = &ConnectedNode{addr, c}
+
+	n.decideLeader()
 	return nil
 }
 
@@ -101,6 +115,8 @@ func (n *Node) Disconnect(name string) error {
 		delete(n.peers, name)
 		return err
 	}
+
+	n.decideLeader()
 	return nil
 }
 
@@ -117,6 +133,8 @@ func (n *Node) LinkWorker(w *Worker) error {
 	if err != nil {
 		return err
 	}
+
+	n.decideLeader()
 	n.mu.Unlock()
 
 	n.wg.Add(1)
