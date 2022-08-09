@@ -6,6 +6,19 @@ import (
 	"sync"
 )
 
+type WorkerState struct {
+	Value int
+}
+
+func (s *WorkerState) String() string {
+	return fmt.Sprintf("Value: %d", s.Value)
+}
+
+type WorkerLog struct {
+	Operation string
+	Value     int
+}
+
 type Worker struct {
 	name string
 	node *Node
@@ -50,7 +63,7 @@ func (w *Worker) LinkNode(n *Node) {
 
 func (w *Worker) AddLog(l WorkerLog) error {
 	if l.Operation != "+" && l.Operation != "-" && l.Operation != "*" && l.Operation != "/" {
-		return fmt.Errorf("Invalid operation: %s", l.Operation)
+		return fmt.Errorf("invalid operation: %s", l.Operation)
 	}
 
 	w.Logs = append(w.Logs, &l)
@@ -59,11 +72,10 @@ func (w *Worker) AddLog(l WorkerLog) error {
 
 func (w *Worker) DeleteLastLog() error {
 	if len(w.Logs) == 0 {
-		return fmt.Errorf("No logs to delete")
+		return fmt.Errorf("no logs to delete")
 	}
 
 	w.Logs = w.Logs[:len(w.Logs)-1]
-
 	return nil
 }
 

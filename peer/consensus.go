@@ -1,23 +1,10 @@
 package peer
 
 import (
-	"fmt"
 	"log"
 
 	"golang.org/x/sync/errgroup"
 )
-
-type WorkerState struct {
-	Value int
-}
-
-func InitState(w *Worker) WorkerState {
-	return WorkerState{0}
-}
-
-func (s *WorkerState) String() string {
-	return fmt.Sprintf("Value: %d", s.Value)
-}
 
 type RequestStateArgs struct{}
 
@@ -34,11 +21,6 @@ func (w *Worker) RequestState(args RequestStateArgs, reply *RequestStateReply) e
 	log.Println(reply.State.String())
 
 	return nil
-}
-
-type WorkerLog struct {
-	Operation string
-	Value     int
 }
 
 type RequestLogArgs struct{}
