@@ -8,12 +8,12 @@ import (
 )
 
 type WorkerState struct {
-	term  int
+	Term  int
 	Value int
 }
 
 func (s *WorkerState) String() string {
-	return fmt.Sprintf("Value: %d", s.Value)
+	return fmt.Sprintf("Value: %d, Term: %d", s.Value, s.Term)
 }
 
 type WorkerLog struct {
@@ -116,7 +116,7 @@ func (w *Worker) State() WorkerState {
 }
 
 func (w *Worker) PingTicker() {
-	t := time.NewTimer(time.Second)
+	t := time.NewTimer(10 * time.Millisecond)
 
 	for {
 		<-t.C
