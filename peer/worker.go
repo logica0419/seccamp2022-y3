@@ -15,8 +15,8 @@ func (s *WorkerState) String() string {
 }
 
 type WorkerLog struct {
-	Operation string
-	Value     int
+	Operator string
+	Operand  int
 }
 
 type Worker struct {
@@ -62,8 +62,8 @@ func (w *Worker) LinkNode(n *Node) {
 }
 
 func (w *Worker) AddLog(l WorkerLog) error {
-	if l.Operation != "+" && l.Operation != "-" && l.Operation != "*" && l.Operation != "/" {
-		return fmt.Errorf("invalid operation: %s", l.Operation)
+	if l.Operator != "+" && l.Operator != "-" && l.Operator != "*" && l.Operator != "/" {
+		return fmt.Errorf("invalid operator: %s", l.Operator)
 	}
 
 	w.Logs = append(w.Logs, &l)
@@ -83,15 +83,15 @@ func (w *Worker) State() WorkerState {
 	temp := 0
 
 	for _, v := range w.Logs {
-		switch v.Operation {
+		switch v.Operator {
 		case "+":
-			temp += v.Value
+			temp += v.Operand
 		case "-":
-			temp -= v.Value
+			temp -= v.Operand
 		case "*":
-			temp *= v.Value
+			temp *= v.Operand
 		case "/":
-			temp /= v.Value
+			temp /= v.Operand
 		}
 	}
 

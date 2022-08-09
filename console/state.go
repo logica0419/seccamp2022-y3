@@ -26,20 +26,20 @@ func Log(name string) (string, error) {
 
 	logs := "Operation Logs:"
 	for i, v := range reply.Logs {
-		logs += fmt.Sprintf("\nOperation%d: %s %d", i+1, v.Operation, v.Value)
+		logs += fmt.Sprintf("\nOperation%d: %s %d", i+1, v.Operator, v.Operand)
 	}
 
 	return logs, nil
 }
 
-func UpdateState(name string, operation string, value string) (string, error) {
+func UpdateState(name string, operator string, value string) (string, error) {
 	i, err := strconv.Atoi(value)
 	if err != nil {
 		return "", err
 	}
 
 	var reply peer.UpdateStateReply
-	err = send_rpc(name, "Worker.UpdateState", peer.UpdateStateArgs{Operation: operation, Value: i}, &reply)
+	err = send_rpc(name, "Worker.UpdateState", peer.UpdateStateArgs{Operator: operator, Operand: i}, &reply)
 	if err != nil {
 		return "", err
 	}

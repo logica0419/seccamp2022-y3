@@ -39,8 +39,8 @@ func (w *Worker) RequestLog(args RequestLogArgs, reply *RequestLogReply) error {
 }
 
 type UpdateStateArgs struct {
-	Operation string
-	Value     int
+	Operator string
+	Operand  int
 }
 
 type UpdateStateReply struct {
