@@ -31,8 +31,6 @@ type Node struct {
 	quit   chan interface{}
 
 	delay int
-
-	leader string
 }
 
 type NodeOption func(*Node)
@@ -64,22 +62,6 @@ func (n *Node) Rand() *rand.Rand {
 	return n.rnd
 }
 
-func (n *Node) Leader() string {
-	return n.leader
-}
-
-func (n *Node) resetLeader() {
-	if n.leader == "" || n.leader > n.worker.Name() {
-		n.leader = n.worker.Name()
-	}
-
-	for k := range n.peers {
-		if n.leader > k {
-			n.leader = k
-		}
-	}
-}
-
 func (n *Node) Connect(name, addr string) error {
 	if n.IsConnectedTo(name) {
 		return fmt.Errorf("Peer '%s' is already reserved", name)
@@ -92,8 +74,6 @@ func (n *Node) Connect(name, addr string) error {
 		return err
 	}
 	n.peers[name] = &ConnectedNode{addr, c}
-
-	n.resetLeader()
 	return nil
 }
 
@@ -116,7 +96,6 @@ func (n *Node) Disconnect(name string) error {
 		return err
 	}
 
-	n.resetLeader()
 	return nil
 }
 
@@ -134,7 +113,6 @@ func (n *Node) LinkWorker(w *Worker) error {
 		return err
 	}
 
-	n.resetLeader()
 	n.mu.Unlock()
 
 	n.wg.Add(1)
@@ -152,6 +130,8 @@ func (n *Node) LinkWorker(w *Worker) error {
 			}
 			n.wg.Add(1)
 			go func() {
+				go w.PingTicker()
+
 				n.server.ServeConn(conn)
 				n.wg.Done()
 			}()

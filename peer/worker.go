@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 type WorkerState struct {
+	term  int
 	Value int
 }
 
@@ -26,6 +28,9 @@ type Worker struct {
 	mu sync.Mutex
 
 	Logs []*WorkerLog
+
+	term   int
+	leader string
 }
 
 type WorkerOption func(*Worker)
@@ -61,8 +66,16 @@ func (w *Worker) LinkNode(n *Node) {
 	w.node = n
 }
 
+func (w *Worker) Term() int {
+	return w.term
+}
+
 func (w *Worker) Leader() string {
-	return w.node.Leader()
+	return w.leader
+}
+
+func (w *Worker) SetLeader(leader string) {
+	w.leader = leader
 }
 
 func (w *Worker) AddLog(l WorkerLog) error {
@@ -99,7 +112,27 @@ func (w *Worker) State() WorkerState {
 		}
 	}
 
-	return WorkerState{temp}
+	return WorkerState{temp, w.term}
+}
+
+func (w *Worker) PingTicker() {
+	t := time.NewTimer(time.Second)
+
+	for {
+		<-t.C
+		if w.Leader() != w.Name() {
+			continue
+		}
+
+		for k := range w.ConnectedPeers() {
+			reply := PingReply{}
+
+			err := w.RemoteCall(k, "Worker.Ping", PingArgs{}, &reply)
+			if err != nil || !reply.OK {
+				w.SetLeader("")
+			}
+		}
+	}
 }
 
 func (w *Worker) Connect(name, addr string) (err error) {

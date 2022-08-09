@@ -6,6 +6,25 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type PingArgs struct {
+	Leader string
+	Term   int
+}
+
+type PingReply struct {
+	OK bool
+}
+
+func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
+	if args.Leader != w.Leader() || args.Term < w.Term() {
+		reply.OK = false
+		return nil
+	}
+
+	reply.OK = true
+	return nil
+}
+
 type RequestStateArgs struct{}
 
 type RequestStateReply struct {
