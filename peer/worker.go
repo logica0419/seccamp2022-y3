@@ -12,7 +12,7 @@ type Worker struct {
 
 	mu sync.Mutex
 
-	State WorkerState
+	Logs []*WorkerLog
 }
 
 type WorkerOption func(*Worker)
@@ -20,7 +20,7 @@ type WorkerOption func(*Worker)
 func NewWorker(name string) *Worker {
 	w := new(Worker)
 	w.name = name
-	w.State = InitState(w)
+	w.Logs = []*WorkerLog{}
 	return w
 }
 
@@ -46,6 +46,44 @@ func (w *Worker) Rand() *rand.Rand {
 
 func (w *Worker) LinkNode(n *Node) {
 	w.node = n
+}
+
+func (w *Worker) AddLog(l WorkerLog) error {
+	if l.Operation != "+" && l.Operation != "-" && l.Operation != "*" && l.Operation != "/" {
+		return fmt.Errorf("Invalid operation: %s", l.Operation)
+	}
+
+	w.Logs = append(w.Logs, &l)
+	return nil
+}
+
+func (w *Worker) DeleteLastLog() error {
+	if len(w.Logs) == 0 {
+		return fmt.Errorf("No logs to delete")
+	}
+
+	w.Logs = w.Logs[:len(w.Logs)-1]
+
+	return nil
+}
+
+func (w *Worker) State() WorkerState {
+	temp := 0
+
+	for _, v := range w.Logs {
+		switch v.Operation {
+		case "+":
+			temp += v.Value
+		case "-":
+			temp -= v.Value
+		case "*":
+			temp *= v.Value
+		case "/":
+			temp /= v.Value
+		}
+	}
+
+	return WorkerState{temp}
 }
 
 func (w *Worker) Connect(name, addr string) (err error) {
@@ -74,8 +112,8 @@ func (w *Worker) Connect(name, addr string) (err error) {
 }
 
 func (w *Worker) Stop() {
-    w.node.Shutdown()
-    w.node = nil
+	w.node.Shutdown()
+	w.node = nil
 }
 
 func (w *Worker) RemoteCall(name, method string, args any, reply any) error {
@@ -92,8 +130,8 @@ type RequestConnectArgs struct {
 }
 
 type RequestConnectReply struct {
-	OK bool
-	Peers    map[string]string
+	OK    bool
+	Peers map[string]string
 }
 
 func (w *Worker) RequestConnect(args RequestConnectArgs, reply *RequestConnectReply) error {
@@ -107,23 +145,23 @@ func (w *Worker) RequestConnect(args RequestConnectArgs, reply *RequestConnectRe
 	}
 	reply.OK = true
 	for name, addr := range w.node.ConnectedNodes() {
-        reply.Peers[name] = addr
+		reply.Peers[name] = addr
 	}
 	return nil
 }
 
-type RequestConnectedPeersArgs struct {}
+type RequestConnectedPeersArgs struct{}
 
 type RequestConnectedPeersReply struct {
-    Peers map[string]string
+	Peers map[string]string
 }
 
 func (w *Worker) RequestConnectedPeers(args RequestConnectedPeersArgs, reply *RequestConnectedPeersReply) error {
-    w.LockMutex()
-    defer w.UnlockMutex()
-    reply.Peers = make(map[string]string)
-    for k, v := range w.ConnectedPeers() {
-        reply.Peers[k] = v
-    }
-    return nil
+	w.LockMutex()
+	defer w.UnlockMutex()
+	reply.Peers = make(map[string]string)
+	for k, v := range w.ConnectedPeers() {
+		reply.Peers[k] = v
+	}
+	return nil
 }
