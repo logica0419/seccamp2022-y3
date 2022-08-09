@@ -3,6 +3,8 @@ package peer
 import (
 	"fmt"
 	"log"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type WorkerState struct {
@@ -65,22 +67,29 @@ type UpdateStateReply struct {
 }
 
 func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) error {
-	w.LockMutex()
-	defer w.UnlockMutex()
+	eg := errgroup.Group{}
 
-	reply.Before = w.State()
-	if err := w.AddLog(WorkerLog(args)); err != nil {
-		return err
-	}
-	reply.After = w.State()
+	eg.Go(func() error {
+		return w.UpdateStateWithoutSync(args, reply)
+	})
 
 	for k := range w.ConnectedPeers() {
-		if err := w.RemoteCall(k, "Worker.UpdateStateWithoutSync", args, &reply); err != nil {
-			return err
-		}
+		k := k
+
+		eg.Go(func() error {
+			tmp := UpdateStateReply{}
+			if err := w.RemoteCall(k, "Worker.UpdateStateWithoutSync", args, tmp); err != nil {
+				return err
+			}
+
+			return nil
+		})
 	}
 
-	log.Println(reply.Before.String(), reply.After.String())
+	err := eg.Wait()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
