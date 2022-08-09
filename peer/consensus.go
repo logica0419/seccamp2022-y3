@@ -59,11 +59,7 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 		k := k
 
 		eg.Go(func() error {
-			if err := w.RemoteCall(k, "Worker.UpdateStateWithoutSync", args, &UpdateStateReply{}); err != nil {
-				return err
-			}
-
-			return nil
+			return w.RemoteCall(k, "Worker.UpdateStateWithoutSync", args, &UpdateStateReply{})
 		})
 	}
 
