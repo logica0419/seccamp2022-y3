@@ -52,7 +52,7 @@ func (w *Worker) RequestLog(args RequestLogArgs, reply *RequestLogReply) error {
 	w.LockMutex()
 	defer w.UnlockMutex()
 
-	reply.Logs = w.Logs
+	reply.Logs = w.Logs()
 
 	return nil
 }

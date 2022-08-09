@@ -27,7 +27,7 @@ type Worker struct {
 
 	mu sync.Mutex
 
-	Logs []*WorkerLog
+	logs []*WorkerLog
 
 	term   int
 	leader string
@@ -38,7 +38,7 @@ type WorkerOption func(*Worker)
 func NewWorker(name string) *Worker {
 	w := new(Worker)
 	w.name = name
-	w.Logs = []*WorkerLog{}
+	w.logs = []*WorkerLog{}
 	return w
 }
 
@@ -78,28 +78,32 @@ func (w *Worker) SetLeader(leader string) {
 	w.leader = leader
 }
 
+func (w *Worker) Logs() []*WorkerLog {
+	return w.logs
+}
+
 func (w *Worker) AddLog(l WorkerLog) error {
 	if l.Operator != "+" && l.Operator != "-" && l.Operator != "*" && l.Operator != "/" {
 		return fmt.Errorf("invalid operator: %s", l.Operator)
 	}
 
-	w.Logs = append(w.Logs, &l)
+	w.logs = append(w.logs, &l)
 	return nil
 }
 
 func (w *Worker) DeleteLastLog() error {
-	if len(w.Logs) == 0 {
+	if len(w.logs) == 0 {
 		return fmt.Errorf("no logs to delete")
 	}
 
-	w.Logs = w.Logs[:len(w.Logs)-1]
+	w.logs = w.logs[:len(w.logs)-1]
 	return nil
 }
 
 func (w *Worker) State() WorkerState {
 	temp := 0
 
-	for _, v := range w.Logs {
+	for _, v := range w.logs {
 		switch v.Operator {
 		case "+":
 			temp += v.Operand
