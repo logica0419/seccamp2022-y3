@@ -68,7 +68,7 @@ func (n *Node) Leader() string {
 	return n.leader
 }
 
-func (n *Node) decideLeader() {
+func (n *Node) resetLeader() {
 	if n.leader == "" || n.leader > n.worker.Name() {
 		n.leader = n.worker.Name()
 	}
@@ -93,7 +93,7 @@ func (n *Node) Connect(name, addr string) error {
 	}
 	n.peers[name] = &ConnectedNode{addr, c}
 
-	n.decideLeader()
+	n.resetLeader()
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (n *Node) Disconnect(name string) error {
 		return err
 	}
 
-	n.decideLeader()
+	n.resetLeader()
 	return nil
 }
 
@@ -134,7 +134,7 @@ func (n *Node) LinkWorker(w *Worker) error {
 		return err
 	}
 
-	n.decideLeader()
+	n.resetLeader()
 	n.mu.Unlock()
 
 	n.wg.Add(1)
