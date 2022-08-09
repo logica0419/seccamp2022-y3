@@ -41,6 +41,8 @@ func (c *Command) Exec() (string, error) {
 		return Log(c.args[0])
 	case "update":
 		return UpdateState(c.args[0], c.args[1], c.args[2])
+	case "leader":
+		return Leader(c.args[0])
 	default:
 		return "", fmt.Errorf("No such command")
 	}

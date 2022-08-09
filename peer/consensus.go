@@ -94,3 +94,18 @@ func (w *Worker) UpdateStateWithoutSync(args UpdateStateArgs, reply *UpdateState
 
 	return nil
 }
+
+type RequestLeaderArgs struct{}
+
+type RequestLeaderReply struct {
+	Leader string
+}
+
+func (w *Worker) RequestLeader(args RequestLeaderArgs, reply *RequestLeaderReply) error {
+	w.LockMutex()
+	defer w.UnlockMutex()
+
+	reply.Leader = w.Leader()
+
+	return nil
+}

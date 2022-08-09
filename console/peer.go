@@ -20,3 +20,13 @@ func ListPeers(name string) (string, error) {
 
 	return peers, nil
 }
+
+func Leader(name string) (string, error) {
+	var reply peer.RequestLeaderReply
+	err := send_rpc(name, "Worker.RequestLeader", peer.RequestLeaderArgs{}, &reply)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Leader: %s", reply.Leader), nil
+}
