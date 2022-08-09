@@ -47,10 +47,9 @@ func main() {
 	}
 	for name, addr := range peers {
 		if name != worker.Name() {
-			worker.Connect(name, addr)
+			_ = worker.Connect(name, addr)
 		}
 	}
 
-	for {
-	}
+	select {}
 }
