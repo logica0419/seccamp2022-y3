@@ -49,7 +49,7 @@ type UpdateStateReply struct {
 }
 
 func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) error {
-	if !w.IsLeader() {
+	if w.Leader() != w.Name() {
 		err := w.RemoteCall(w.Leader(), "Worker.UpdateStateWithoutSync", args, &UpdateStateReply{})
 		if err != nil {
 			return err

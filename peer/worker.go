@@ -65,10 +65,6 @@ func (w *Worker) Leader() string {
 	return w.node.Leader()
 }
 
-func (w *Worker) IsLeader() bool {
-	return w.node.Leader() == w.name
-}
-
 func (w *Worker) AddLog(l WorkerLog) error {
 	if l.Operator != "+" && l.Operator != "-" && l.Operator != "*" && l.Operator != "/" {
 		return fmt.Errorf("invalid operator: %s", l.Operator)
