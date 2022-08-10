@@ -44,6 +44,6 @@ func send_rpc(peer, method string, args any, reply any) error {
 	case err := <-c:
 		return err
 	case <-t.C:
-		return fmt.Errorf("RPC call timeout")
+		return fmt.Errorf("RPC call timed out")
 	}
 }

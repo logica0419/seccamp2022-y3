@@ -305,7 +305,7 @@ func (w *Worker) RemoteCallWithTimeout(name, method string, args any, reply any,
 
 	case <-t.C:
 		_ = w.node.Disconnect(name)
-		return fmt.Errorf("call timeout")
+		return fmt.Errorf("call timed out")
 	}
 }
 
