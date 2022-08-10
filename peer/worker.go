@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/rpc"
 	"sync"
 	"time"
 
@@ -161,9 +162,7 @@ func (w *Worker) StartPingTicker() {
 			k := k
 
 			eg.Go(func() error {
-				reply := PingReply{}
-
-				err := w.RemoteCallWithTimeout(k, "Worker.Ping", PingArgs{w.Name(), w.Term()}, &reply, w.pingDuration/2)
+				err := w.RemoteCallWithTimeout(k, "Worker.Ping", PingArgs{w.Name(), w.Term()}, &PingReply{}, w.pingDuration/2)
 				if err != nil {
 					return err
 				}
@@ -277,7 +276,16 @@ func (w *Worker) Stop() {
 }
 
 func (w *Worker) RemoteCall(name, method string, args any, reply any) error {
-	return w.node.call(name, method, args, reply)
+	err := w.node.call(name, method, args, reply)
+	if err != nil {
+		if errors.Is(err, rpc.ErrShutdown) {
+			_ = w.node.Disconnect(name)
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 func (w *Worker) RemoteCallWithTimeout(name, method string, args any, reply any, timeout time.Duration) error {
@@ -290,8 +298,13 @@ func (w *Worker) RemoteCallWithTimeout(name, method string, args any, reply any,
 
 	select {
 	case err := <-c:
+		if errors.Is(err, rpc.ErrShutdown) {
+			_ = w.node.Disconnect(name)
+		}
 		return err
+
 	case <-t.C:
+		_ = w.node.Disconnect(name)
 		return fmt.Errorf("call timeout")
 	}
 }
