@@ -17,13 +17,15 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 	w.LockMutex()
 	defer w.UnlockMutex()
 
+	log.Printf("received ping from %s", args.Leader)
+
 	if args.Term < w.Term() {
 		return ErrNotLeader
 	}
 
 	w.SetLeader(args.Leader)
 	w.SetTerm(args.Term)
-	w.ResetVoteTicker()
+	w.ResetVoteTimer()
 
 	return nil
 }
@@ -41,6 +43,8 @@ func (w *Worker) Vote(args VoteArgs, reply *VoteReply) error {
 	w.LockMutex()
 	defer w.UnlockMutex()
 
+	log.Printf("received vote request from %s", args.Leader)
+
 	if args.Term <= w.Term() {
 		reply.IfAccept = false
 		return nil
@@ -48,7 +52,7 @@ func (w *Worker) Vote(args VoteArgs, reply *VoteReply) error {
 
 	w.SetLeader(args.Leader)
 	w.SetTerm(args.Term)
-	w.ResetVoteTicker()
+	w.ResetVoteTimer()
 
 	reply.IfAccept = true
 	return nil

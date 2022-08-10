@@ -3,6 +3,7 @@ package peer
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -38,7 +39,7 @@ type Worker struct {
 	pingDuration time.Duration
 	pingTicker   *time.Ticker
 	voteDuration time.Duration
-	voteTicker   *time.Ticker
+	voteTimer    *time.Timer
 }
 
 type WorkerOption func(*Worker)
@@ -49,13 +50,9 @@ func NewWorker(name string) *Worker {
 	w.logs = []*WorkerLog{}
 	w.term = 0
 
-	w.pingDuration = 10 * time.Millisecond
+	w.pingDuration = 1 * time.Second
 	w.pingTicker = time.NewTicker(w.pingDuration)
 	w.pingTicker.Stop()
-
-	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()/50) + 10) * time.Millisecond
-	w.voteTicker = time.NewTicker(w.voteDuration)
-	go w.StartVoteTicker()
 
 	return w
 }
@@ -82,6 +79,10 @@ func (w *Worker) Rand() *rand.Rand {
 
 func (w *Worker) LinkNode(n *Node) {
 	w.node = n
+
+	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()) + 1) * time.Second
+	w.voteTimer = time.NewTimer(w.voteDuration)
+	go w.StartVoteTimer()
 }
 
 func (w *Worker) Term() int {
@@ -149,6 +150,8 @@ func (w *Worker) StartPingTicker() {
 	for {
 		<-w.pingTicker.C
 
+		log.Print("sending ping")
+
 		eg := errgroup.Group{}
 		for k := range w.ConnectedPeers() {
 			k := k
@@ -172,66 +175,64 @@ func (w *Worker) StartPingTicker() {
 	}
 
 	w.pingTicker.Stop()
-	go w.StartVoteTicker()
+	go w.StartVoteTimer()
 }
 
 func (w *Worker) ResetPingTicker() {
 	w.pingTicker.Reset(w.pingDuration)
 }
 
-func (w *Worker) StartVoteTicker() {
-	w.ResetVoteTicker()
+func (w *Worker) StartVoteTimer() {
+	w.ResetVoteTimer()
+	<-w.voteTimer.C
 
-	for {
-		<-w.voteTicker.C
+	log.Print("sending vote")
 
-		w.LockMutex()
-		w.SetLeader(w.Name())
-		w.SetTerm(w.Term() + 1)
-		w.UnlockMutex()
+	w.LockMutex()
+	w.SetLeader(w.Name())
+	w.SetTerm(w.Term() + 1)
+	w.UnlockMutex()
 
-		eg := errgroup.Group{}
-		ac := make(chan bool, len(w.ConnectedPeers()))
-		for k := range w.ConnectedPeers() {
-			k := k
+	eg := errgroup.Group{}
+	ac := make(chan bool, len(w.ConnectedPeers()))
+	for k := range w.ConnectedPeers() {
+		k := k
 
-			eg.Go(func() error {
-				reply := VoteReply{}
-				err := w.RemoteCallWithTimeout(k, "Worker.Vote", VoteArgs{w.Name(), w.Term()}, &reply, w.pingDuration/2)
-				if err != nil {
-					ac <- false
-					return err
-				}
-
-				ac <- reply.IfAccept
-
-				return nil
-			})
-		}
-
-		_ = eg.Wait()
-
-		acceptance := 0
-		rejection := 0
-		for a := range ac {
-			if a {
-				acceptance++
-			} else {
-				rejection++
+		eg.Go(func() error {
+			reply := VoteReply{}
+			err := w.RemoteCallWithTimeout(k, "Worker.Vote", VoteArgs{w.Name(), w.Term()}, &reply, w.pingDuration/2)
+			if err != nil {
+				return err
 			}
-		}
 
-		if acceptance > rejection || len(w.ConnectedPeers()) == 0 {
-			break
+			ac <- reply.IfAccept
+
+			return nil
+		})
+	}
+
+	_ = eg.Wait()
+
+	acceptance := 0
+	rejection := 0
+	for a := range ac {
+		if a {
+			acceptance++
+		} else {
+			rejection++
 		}
 	}
 
-	w.voteTicker.Stop()
-	go w.StartPingTicker()
+	if acceptance > rejection || len(w.ConnectedPeers()) == 0 {
+		go w.StartPingTicker()
+		return
+	}
+
+	go w.StartVoteTimer()
 }
 
-func (w *Worker) ResetVoteTicker() {
-	w.voteTicker.Reset(w.voteDuration)
+func (w *Worker) ResetVoteTimer() {
+	w.voteTimer.Reset(w.voteDuration)
 }
 
 func (w *Worker) Connect(name, addr string) (err error) {
