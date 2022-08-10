@@ -80,7 +80,7 @@ func (w *Worker) Rand() *rand.Rand {
 func (w *Worker) LinkNode(n *Node) {
 	w.node = n
 
-	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()) + 2) * time.Second
+	w.voteDuration = time.Duration(w.Rand().ExpFloat64()*1000)*time.Millisecond + time.Second*3/2
 	w.voteTimer = time.NewTimer(w.voteDuration)
 	go w.StartVoteTimer()
 }
@@ -152,6 +152,9 @@ func (w *Worker) StartPingTicker() {
 
 	for {
 		<-w.pingTicker.C
+		if w.Leader() != w.Name() {
+			break
+		}
 
 		eg := errgroup.Group{}
 		for k := range w.ConnectedPeers() {
@@ -190,7 +193,6 @@ func (w *Worker) StartVoteTimer() {
 	log.Print("sending vote")
 
 	w.LockMutex()
-	w.SetLeader(w.Name())
 	w.SetTerm(w.Term() + 1)
 	w.UnlockMutex()
 
@@ -227,6 +229,10 @@ func (w *Worker) StartVoteTimer() {
 
 	if acceptance > rejection || len(w.ConnectedPeers()) == 0 {
 		log.Print("vote accepted")
+
+		w.LockMutex()
+		w.SetLeader(w.Name())
+		w.UnlockMutex()
 
 		go w.StartPingTicker()
 		return
