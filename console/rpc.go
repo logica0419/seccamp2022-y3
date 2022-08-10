@@ -18,7 +18,7 @@ func DialDispatcher(addr string) error {
 	return nil
 }
 
-func send_rpc(peer, method string, args any, reply any) error {
+func sendRPC(peer, method string, args any, reply any) error {
 	var client *rpc.Client
 	c := make(chan error)
 

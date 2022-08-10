@@ -9,7 +9,7 @@ import (
 
 func State(name string) (string, error) {
 	var reply peer.RequestStateReply
-	err := send_rpc(name, "Worker.RequestState", peer.RequestStateArgs{}, &reply)
+	err := sendRPC(name, "Worker.RequestState", peer.RequestStateArgs{}, &reply)
 	if err != nil {
 		return "", err
 	}
@@ -19,7 +19,7 @@ func State(name string) (string, error) {
 
 func Log(name string) (string, error) {
 	var reply peer.RequestLogReply
-	err := send_rpc(name, "Worker.RequestLog", peer.RequestLogArgs{}, &reply)
+	err := sendRPC(name, "Worker.RequestLog", peer.RequestLogArgs{}, &reply)
 	if err != nil {
 		return "", err
 	}
@@ -39,7 +39,7 @@ func UpdateState(name string, operator string, value string) (string, error) {
 	}
 
 	var reply peer.UpdateStateReply
-	err = send_rpc(name, "Worker.UpdateState", peer.UpdateStateArgs{Operator: operator, Operand: i}, &reply)
+	err = sendRPC(name, "Worker.UpdateState", peer.UpdateStateArgs{Operator: operator, Operand: i}, &reply)
 	if err != nil {
 		return "", err
 	}

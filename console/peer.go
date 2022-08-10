@@ -8,7 +8,7 @@ import (
 
 func ListPeers(name string) (string, error) {
 	var reply peer.RequestConnectedPeersReply
-	err := send_rpc(name, "Worker.RequestConnectedPeers", peer.RequestConnectedPeersArgs{}, &reply)
+	err := sendRPC(name, "Worker.RequestConnectedPeers", peer.RequestConnectedPeersArgs{}, &reply)
 	if err != nil {
 		return "", err
 	}
@@ -23,7 +23,7 @@ func ListPeers(name string) (string, error) {
 
 func Leader(name string) (string, error) {
 	var reply peer.RequestLeaderReply
-	err := send_rpc(name, "Worker.RequestLeader", peer.RequestLeaderArgs{}, &reply)
+	err := sendRPC(name, "Worker.RequestLeader", peer.RequestLeaderArgs{}, &reply)
 	if err != nil {
 		return "", err
 	}
