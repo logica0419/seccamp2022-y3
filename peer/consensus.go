@@ -23,11 +23,12 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 		w.SetLeader(args.Leader)
 	}
 
-	if args.Leader != w.Leader() || args.Term < w.Term() {
+	if args.Term < w.Term() {
 		reply.OK = false
 		return nil
 	}
 
+	w.SetLeader(args.Leader)
 	w.SetTerm(args.Term)
 	w.ResetVoteTimer()
 
