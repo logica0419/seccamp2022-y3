@@ -1,7 +1,10 @@
 package console
 
 import (
+	"fmt"
+	"log"
 	"net/rpc"
+	"time"
 
 	"sc.y3/dispatcher"
 )
@@ -17,15 +20,33 @@ func DialDispatcher(addr string) error {
 }
 
 func send_rpc(peer, method string, args any, reply any) error {
-	addr, err := disp.GetAddr(peer)
-	if err != nil {
-		return err
-	}
+	var client *rpc.Client
+	c := make(chan error)
 
-	client, err := rpc.Dial("tcp", addr)
-	if err != nil {
-		return err
-	}
+	go func() {
+		log.Printf("Getting Addr")
+		addr, err := disp.GetAddr(peer)
+		if err != nil {
+			c <- err
+			return
+		}
 
-	return client.Call(method, args, reply)
+		log.Printf("Dialing %s", addr)
+		client, err = rpc.Dial("tcp", addr)
+		if err != nil {
+			c <- err
+			return
+		}
+
+		c <- client.Call(method, args, reply)
+	}()
+
+	t := time.NewTimer(time.Second * 1)
+
+	select {
+	case err := <-c:
+		return err
+	case <-t.C:
+		return fmt.Errorf("RPC call timeout")
+	}
 }
