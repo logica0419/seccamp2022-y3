@@ -64,8 +64,12 @@ func (n *Node) Rand() *rand.Rand {
 
 func (n *Node) Connect(name, addr string) error {
 	if n.IsConnectedTo(name) {
-		return fmt.Errorf("Peer '%s' is already reserved", name)
+		err := n.Disconnect(name)
+		if err != nil {
+			return err
+		}
 	}
+
 	log.Printf("Connect to %s:%s", name, addr)
 	n.mu.Lock()
 	defer n.mu.Unlock()
