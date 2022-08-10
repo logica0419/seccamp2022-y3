@@ -227,7 +227,7 @@ func (w *Worker) StartVoteTimer() {
 		}
 	}
 
-	if acceptance > rejection || len(w.ConnectedPeers()) == 0 {
+	if acceptance > rejection || acceptance+rejection == 0 {
 		log.Print("vote accepted")
 
 		w.LockMutex()
