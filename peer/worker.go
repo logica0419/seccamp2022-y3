@@ -217,6 +217,22 @@ func (w *Worker) RemoteCall(name, method string, args any, reply any) error {
 	return w.node.call(name, method, args, reply)
 }
 
+func (w *Worker) RemoteCallWithTimeout(name, method string, args any, reply any, timeout time.Duration) error {
+	c := make(chan error, 1)
+	t := time.NewTimer(timeout)
+
+	go func() {
+		c <- w.node.call(name, method, args, reply)
+	}()
+
+	select {
+	case err := <-c:
+		return err
+	case <-t.C:
+		return fmt.Errorf("call timeout")
+	}
+}
+
 func (w *Worker) ConnectedPeers() map[string]string {
 	return w.node.ConnectedNodes()
 }
