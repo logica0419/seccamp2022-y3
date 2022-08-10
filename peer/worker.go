@@ -139,7 +139,10 @@ func (w *Worker) State() WorkerState {
 		}
 	}
 
-	return WorkerState{temp, w.term}
+	return WorkerState{
+		Term:  w.term,
+		Value: temp,
+	}
 }
 
 var ErrNotLeader = fmt.Errorf("not leader")
