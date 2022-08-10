@@ -11,16 +11,38 @@ type PingArgs struct {
 	Term   int
 }
 
-type PingReply struct {
-	OK bool
-}
+type PingReply struct{}
 
 func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 	w.LockMutex()
 	defer w.UnlockMutex()
 
 	if args.Term < w.Term() {
-		reply.OK = false
+		return ErrNotLeader
+	}
+
+	w.SetLeader(args.Leader)
+	w.SetTerm(args.Term)
+	w.ResetVoteTicker()
+
+	return nil
+}
+
+type VoteArgs struct {
+	Leader string
+	Term   int
+}
+
+type VoteReply struct {
+	IfAccept bool
+}
+
+func (w *Worker) Vote(args VoteArgs, reply *VoteReply) error {
+	w.LockMutex()
+	defer w.UnlockMutex()
+
+	if args.Term <= w.Term() {
+		reply.IfAccept = false
 		return nil
 	}
 
@@ -28,7 +50,7 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 	w.SetTerm(args.Term)
 	w.ResetVoteTicker()
 
-	reply.OK = true
+	reply.IfAccept = true
 	return nil
 }
 

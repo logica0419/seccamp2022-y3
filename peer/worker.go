@@ -55,7 +55,7 @@ func NewWorker(name string) *Worker {
 
 	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()/50) + 10) * time.Millisecond
 	w.voteTicker = time.NewTicker(w.voteDuration)
-	w.voteTicker.Stop()
+	go w.StartVoteTicker()
 
 	return w
 }
@@ -160,9 +160,6 @@ func (w *Worker) StartPingTicker() {
 				if err != nil {
 					return err
 				}
-				if !reply.OK {
-					return ErrNotLeader
-				}
 
 				return nil
 			})
@@ -188,8 +185,45 @@ func (w *Worker) StartVoteTicker() {
 	for {
 		<-w.voteTicker.C
 
-		// TODO: Voteを実装
-		break
+		w.LockMutex()
+		w.SetLeader(w.Name())
+		w.SetTerm(w.Term() + 1)
+		w.UnlockMutex()
+
+		eg := errgroup.Group{}
+		ac := make(chan bool, len(w.ConnectedPeers()))
+		for k := range w.ConnectedPeers() {
+			k := k
+
+			eg.Go(func() error {
+				reply := VoteReply{}
+				err := w.RemoteCallWithTimeout(k, "Worker.Vote", VoteArgs{w.Name(), w.Term()}, &reply, w.pingDuration/2)
+				if err != nil {
+					ac <- false
+					return err
+				}
+
+				ac <- reply.IfAccept
+
+				return nil
+			})
+		}
+
+		_ = eg.Wait()
+
+		acceptance := 0
+		rejection := 0
+		for a := range ac {
+			if a {
+				acceptance++
+			} else {
+				rejection++
+			}
+		}
+
+		if acceptance > rejection || len(w.ConnectedPeers()) == 0 {
+			break
+		}
 	}
 
 	w.voteTicker.Stop()
