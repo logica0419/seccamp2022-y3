@@ -49,6 +49,14 @@ func NewWorker(name string) *Worker {
 	w.logs = []*WorkerLog{}
 	w.term = 0
 
+	w.pingDuration = 10 * time.Millisecond
+	w.pingTimer = time.NewTimer(w.pingDuration)
+	w.pingTimer.Stop()
+
+	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()/50) + 10) * time.Millisecond
+	w.voteTimer = time.NewTimer(w.voteDuration)
+	w.voteTimer.Stop()
+
 	return w
 }
 
@@ -135,12 +143,12 @@ func (w *Worker) State() WorkerState {
 
 var ErrNotLeader = fmt.Errorf("not leader")
 
-func (w *Worker) PingTimer() {
-	w.pingDuration = 10 * time.Millisecond
-	w.pingTimer = time.NewTimer(w.pingDuration)
+func (w *Worker) StartPingTimer() {
+	w.ResetPingTimer()
 
 	for {
 		<-w.pingTimer.C
+		w.ResetPingTimer()
 
 		eg := errgroup.Group{}
 		for k := range w.ConnectedPeers() {
@@ -162,31 +170,31 @@ func (w *Worker) PingTimer() {
 		}
 
 		err := eg.Wait()
-		if !errors.Is(err, ErrNotLeader) {
-			w.ResetPingTimer()
-			continue
+		if errors.Is(err, ErrNotLeader) {
+			break
 		}
-
-		w.LockMutex()
-		w.SetLeader("")
-		w.ResetVoteTimer()
-		w.UnlockMutex()
 	}
+
+	w.pingTimer.Stop()
+	go w.StartVoteTimer()
 }
 
 func (w *Worker) ResetPingTimer() {
 	w.pingTimer.Reset(w.pingDuration)
 }
 
-func (w *Worker) VoteTimer() {
-	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()/50) + 10) * time.Millisecond
-	w.voteTimer = time.NewTimer(w.voteDuration)
+func (w *Worker) StartVoteTimer() {
+	w.ResetVoteTimer()
 
 	for {
 		<-w.voteTimer.C
 
 		// TODO: Voteを実装
+		break
 	}
+
+	w.voteTimer.Stop()
+	go w.StartPingTimer()
 }
 
 func (w *Worker) ResetVoteTimer() {
