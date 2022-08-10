@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -34,6 +35,8 @@ type Worker struct {
 	term   int
 	leader string
 
+	pingDuration time.Duration
+	pingTimer    *time.Timer
 	voteDuration time.Duration
 	voteTimer    *time.Timer
 }
@@ -130,14 +133,14 @@ func (w *Worker) State() WorkerState {
 	return WorkerState{temp, w.term}
 }
 
-func (w *Worker) PingTicker() {
-	t := time.NewTicker(10 * time.Millisecond)
+var ErrNotLeader = fmt.Errorf("not leader")
+
+func (w *Worker) PingTimer() {
+	w.pingDuration = 10 * time.Millisecond
+	w.pingTimer = time.NewTimer(w.pingDuration)
 
 	for {
-		<-t.C
-		if w.Leader() != w.Name() {
-			continue
-		}
+		<-w.pingTimer.C
 
 		eg := errgroup.Group{}
 		for k := range w.ConnectedPeers() {
@@ -146,12 +149,12 @@ func (w *Worker) PingTicker() {
 			eg.Go(func() error {
 				reply := PingReply{}
 
-				err := w.RemoteCall(k, "Worker.Ping", PingArgs{w.Name(), w.Term()}, &reply)
+				err := w.RemoteCallWithTimeout(k, "Worker.Ping", PingArgs{w.Name(), w.Term()}, &reply, w.pingDuration/2)
 				if err != nil {
 					return err
 				}
 				if !reply.OK {
-					return fmt.Errorf("already not leader")
+					return ErrNotLeader
 				}
 
 				return nil
@@ -159,13 +162,20 @@ func (w *Worker) PingTicker() {
 		}
 
 		err := eg.Wait()
-		if err != nil {
-			w.LockMutex()
-			w.SetLeader("")
-			w.ResetVoteTimer()
-			w.UnlockMutex()
+		if !errors.Is(err, ErrNotLeader) {
+			w.ResetPingTimer()
+			continue
 		}
+
+		w.LockMutex()
+		w.SetLeader("")
+		w.ResetVoteTimer()
+		w.UnlockMutex()
 	}
+}
+
+func (w *Worker) ResetPingTimer() {
+	w.pingTimer.Reset(w.pingDuration)
 }
 
 func (w *Worker) VoteTimer() {

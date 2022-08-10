@@ -130,7 +130,7 @@ func (n *Node) LinkWorker(w *Worker) error {
 			}
 			n.wg.Add(1)
 			go func() {
-				go w.PingTicker()
+				go w.PingTimer()
 
 				n.server.ServeConn(conn)
 				n.wg.Done()
