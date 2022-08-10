@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"sc.y3/console"
-	//"github.com/rivo/tview"
 )
 
 func main() {
