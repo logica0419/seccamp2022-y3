@@ -19,10 +19,6 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 	w.LockMutex()
 	defer w.UnlockMutex()
 
-	if w.Leader() == "" {
-		w.SetLeader(args.Leader)
-	}
-
 	if args.Term < w.Term() {
 		reply.OK = false
 		return nil
