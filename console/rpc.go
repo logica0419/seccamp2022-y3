@@ -2,7 +2,6 @@ package console
 
 import (
 	"fmt"
-	"log"
 	"net/rpc"
 	"time"
 
@@ -24,14 +23,12 @@ func send_rpc(peer, method string, args any, reply any) error {
 	c := make(chan error)
 
 	go func() {
-		log.Printf("Getting Addr")
 		addr, err := disp.GetAddr(peer)
 		if err != nil {
 			c <- err
 			return
 		}
 
-		log.Printf("Dialing %s", addr)
 		client, err = rpc.Dial("tcp", addr)
 		if err != nil {
 			c <- err
