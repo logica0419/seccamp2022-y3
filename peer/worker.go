@@ -36,9 +36,9 @@ type Worker struct {
 	leader string
 
 	pingDuration time.Duration
-	pingTimer    *time.Timer
+	pingTicker   *time.Ticker
 	voteDuration time.Duration
-	voteTimer    *time.Timer
+	voteTicker   *time.Ticker
 }
 
 type WorkerOption func(*Worker)
@@ -50,12 +50,12 @@ func NewWorker(name string) *Worker {
 	w.term = 0
 
 	w.pingDuration = 10 * time.Millisecond
-	w.pingTimer = time.NewTimer(w.pingDuration)
-	w.pingTimer.Stop()
+	w.pingTicker = time.NewTicker(w.pingDuration)
+	w.pingTicker.Stop()
 
 	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()/50) + 10) * time.Millisecond
-	w.voteTimer = time.NewTimer(w.voteDuration)
-	w.voteTimer.Stop()
+	w.voteTicker = time.NewTicker(w.voteDuration)
+	w.voteTicker.Stop()
 
 	return w
 }
@@ -143,12 +143,11 @@ func (w *Worker) State() WorkerState {
 
 var ErrNotLeader = fmt.Errorf("not leader")
 
-func (w *Worker) StartPingTimer() {
-	w.ResetPingTimer()
+func (w *Worker) StartPingTicker() {
+	w.ResetPingTicker()
 
 	for {
-		<-w.pingTimer.C
-		w.ResetPingTimer()
+		<-w.pingTicker.C
 
 		eg := errgroup.Group{}
 		for k := range w.ConnectedPeers() {
@@ -175,30 +174,30 @@ func (w *Worker) StartPingTimer() {
 		}
 	}
 
-	w.pingTimer.Stop()
-	go w.StartVoteTimer()
+	w.pingTicker.Stop()
+	go w.StartVoteTicker()
 }
 
-func (w *Worker) ResetPingTimer() {
-	w.pingTimer.Reset(w.pingDuration)
+func (w *Worker) ResetPingTicker() {
+	w.pingTicker.Reset(w.pingDuration)
 }
 
-func (w *Worker) StartVoteTimer() {
-	w.ResetVoteTimer()
+func (w *Worker) StartVoteTicker() {
+	w.ResetVoteTicker()
 
 	for {
-		<-w.voteTimer.C
+		<-w.voteTicker.C
 
 		// TODO: Voteを実装
 		break
 	}
 
-	w.voteTimer.Stop()
-	go w.StartPingTimer()
+	w.voteTicker.Stop()
+	go w.StartPingTicker()
 }
 
-func (w *Worker) ResetVoteTimer() {
-	w.voteTimer.Reset(w.voteDuration)
+func (w *Worker) ResetVoteTicker() {
+	w.voteTicker.Reset(w.voteDuration)
 }
 
 func (w *Worker) Connect(name, addr string) (err error) {

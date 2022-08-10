@@ -26,7 +26,7 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 
 	w.SetLeader(args.Leader)
 	w.SetTerm(args.Term)
-	w.ResetVoteTimer()
+	w.ResetVoteTicker()
 
 	reply.OK = true
 	return nil
