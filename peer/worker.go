@@ -20,7 +20,7 @@ type WorkerState struct {
 }
 
 func (s *WorkerState) String() (state string) {
-	return fmt.Sprintf("Value: %d | Leader: %s, Term: %d\n", s.Value, s.Leader, s.Term)
+	return fmt.Sprintf("Value: %d | Leader: %s, Term: %d", s.Value, s.Leader, s.Term)
 }
 
 type LogState struct {
@@ -30,16 +30,16 @@ type LogState struct {
 }
 
 func (s *LogState) String() (state string) {
-	state += fmt.Sprintf("CommitIndex: %d\n", s.CommitIndex)
+	state += fmt.Sprintf("CommitIndex: %d", s.CommitIndex)
 
-	state += "NextIndices\n"
+	state += "\nNextIndices"
 	for k, v := range s.NextIndices {
-		state += fmt.Sprintf("  [%s]: %d\n0", k, v)
+		state += fmt.Sprintf("\n  [%s]: %d", k, v)
 	}
 
-	state += "MatchIndices\n"
+	state += "\nMatchIndices"
 	for k, v := range s.MatchIndices {
-		state += fmt.Sprintf("  [%s]: %d\n", k, v)
+		state += fmt.Sprintf("\n  [%s]: %d", k, v)
 	}
 
 	return
