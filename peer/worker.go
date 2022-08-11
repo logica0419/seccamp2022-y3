@@ -56,6 +56,7 @@ type Worker struct {
 	commitIndex  int
 	nextIndices  map[string]int
 	matchIndices map[string]int
+	imu          sync.RWMutex
 
 	term   int
 	leader string
@@ -72,6 +73,9 @@ func NewWorker(name string) *Worker {
 	w := new(Worker)
 	w.name = name
 	w.logs = WorkerLogs{}
+	w.commitIndex = -1
+	w.nextIndices = make(map[string]int)
+	w.matchIndices = make(map[string]int)
 	w.term = 0
 
 	w.heartBeatDuration = 1 * time.Second
@@ -172,7 +176,11 @@ func (w *Worker) State() WorkerState {
 var ErrNotLeader = fmt.Errorf("not leader")
 
 func (w *Worker) SendHeartBeat() error {
-	index := w.logs[len(w.logs)-1].Index
+	index := -1
+	if len(w.logs) > 0 {
+		index = w.logs[len(w.logs)-1].Index
+	}
+
 	eg := errgroup.Group{}
 
 	for k := range w.ConnectedPeers() {
@@ -183,6 +191,7 @@ func (w *Worker) SendHeartBeat() error {
 				reply := HeartBeatReply{}
 
 				entry := WorkerLogs{}
+				w.imu.RLock()
 				for _, v := range w.logs {
 					if v.Index >= w.nextIndices[k] {
 						entry = append(entry, v)
@@ -199,6 +208,10 @@ func (w *Worker) SendHeartBeat() error {
 				if err != nil {
 					return err
 				}
+				w.imu.RUnlock()
+
+				w.imu.Lock()
+				defer w.imu.Unlock()
 
 				if reply.Updated {
 					w.nextIndices[k] = index + 1

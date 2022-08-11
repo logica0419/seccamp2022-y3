@@ -29,7 +29,7 @@ func (w *Worker) HeartBeat(args HeartBeatArgs, reply *HeartBeatReply) error {
 	w.SetTerm(args.Term)
 	w.ResetVoteTimer()
 
-	if w.logs.find(args.PrevLogIndex) == nil {
+	if args.PrevLogIndex >= 0 && w.logs.find(args.PrevLogIndex) == nil {
 		reply.Updated = false
 		return nil
 	}
@@ -54,6 +54,8 @@ func (w *Worker) HeartBeat(args HeartBeatArgs, reply *HeartBeatReply) error {
 		}
 	}
 
+	w.imu.Lock()
+	defer w.imu.Unlock()
 	for k := range w.nextIndices {
 		w.nextIndices[k] = w.commitIndex
 	}
@@ -151,13 +153,20 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 	defer w.UnlockMutex()
 
 	reply.Before = w.State()
+
+	index := -1
+	if len(w.logs) > 0 {
+		index = w.logs[len(w.logs)-1].Index
+	}
+
 	if err := w.AddLog(&WorkerLog{
-		Index:    w.logs[len(w.logs)-1].Index + 1,
+		Index:    index + 1,
 		Operator: args.Operator,
 		Operand:  args.Operand,
 	}); err != nil {
 		return err
 	}
+
 	reply.After = w.State()
 
 	log.Println(reply.Before.String(), "|", reply.After.String())
