@@ -31,9 +31,9 @@ func main() {
 		command := console.Parse(input)
 		result, err := command.Exec()
 		if err != nil {
-			fmt.Printf("> [ERROR] %s\n", err)
+			fmt.Printf("> [ERROR] %s\n\n", err)
 		} else {
-			fmt.Println("> ", result)
+			fmt.Printf("> %s\n\n ", result)
 		}
 	}
 }
