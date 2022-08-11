@@ -178,6 +178,10 @@ func (w *Worker) WorkerState() WorkerState {
 	temp := 0
 
 	for _, v := range w.logs {
+		if v.Index > w.commitIndex {
+			break
+		}
+
 		switch v.Operator {
 		case "+":
 			temp += v.Operand
