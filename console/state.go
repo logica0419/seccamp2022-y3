@@ -25,8 +25,8 @@ func Log(name string) (string, error) {
 	}
 
 	logs := "Operation Logs:"
-	for i, v := range reply.Logs {
-		logs += fmt.Sprintf("\nOperation%d: %s %d", i+1, v.Operator, v.Operand)
+	for _, v := range reply.Logs {
+		logs += fmt.Sprintf("\nOperation%d: %s %d", v.Index, v.Operator, v.Operand)
 	}
 
 	return logs, nil

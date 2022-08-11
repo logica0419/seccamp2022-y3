@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/rpc"
+	"sort"
 	"sync"
 	"time"
 
@@ -22,8 +23,27 @@ func (s *WorkerState) String() string {
 }
 
 type WorkerLog struct {
+	Index    int
 	Operator string
 	Operand  int
+}
+
+type WorkerLogs []*WorkerLog
+
+func (l WorkerLogs) find(index int) *WorkerLog {
+	for _, v := range l {
+		if v.Index == index {
+			return v
+		}
+	}
+
+	return nil
+}
+
+func (l WorkerLogs) sort() {
+	sort.Slice(l, func(i, j int) bool {
+		return l[i].Index < l[j].Index
+	})
 }
 
 type Worker struct {
@@ -32,7 +52,10 @@ type Worker struct {
 
 	mu sync.Mutex
 
-	logs []*WorkerLog
+	logs         WorkerLogs
+	commitIndex  int
+	nextIndices  map[string]int
+	matchIndices map[string]int
 
 	term   int
 	leader string
@@ -48,7 +71,7 @@ type WorkerOption func(*Worker)
 func NewWorker(name string) *Worker {
 	w := new(Worker)
 	w.name = name
-	w.logs = []*WorkerLog{}
+	w.logs = WorkerLogs{}
 	w.term = 0
 
 	w.pingDuration = 1 * time.Second
@@ -102,16 +125,16 @@ func (w *Worker) SetLeader(leader string) {
 	w.leader = leader
 }
 
-func (w *Worker) Logs() []*WorkerLog {
+func (w *Worker) Logs() WorkerLogs {
 	return w.logs
 }
 
-func (w *Worker) AddLog(l WorkerLog) error {
+func (w *Worker) AddLog(l *WorkerLog) error {
 	if l.Operator != "+" && l.Operator != "-" && l.Operator != "*" && l.Operator != "/" {
 		return fmt.Errorf("invalid operator: %s", l.Operator)
 	}
 
-	w.logs = append(w.logs, &l)
+	w.logs = append(w.logs, l)
 	return nil
 }
 
@@ -162,7 +185,10 @@ func (w *Worker) StartPingTicker() {
 			k := k
 
 			eg.Go(func() error {
-				err := w.RemoteCallWithTimeout(k, "Worker.Ping", PingArgs{w.Name(), w.Term()}, &PingReply{}, w.pingDuration/2)
+				err := w.RemoteCallWithTimeout(k, "Worker.Ping", PingArgs{
+					Leader: w.Name(),
+					Term:   w.Term(),
+				}, &PingReply{}, w.pingDuration/2)
 				if err != nil {
 					return err
 				}
