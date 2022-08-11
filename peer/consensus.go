@@ -34,17 +34,19 @@ func (w *Worker) HeartBeat(args HeartBeatArgs, reply *HeartBeatReply) error {
 		return nil
 	}
 
-	for _, v := range args.Entry {
-		if w.logs.find(v.Index) != nil {
-			continue
+	if len(args.Entry) > 0 {
+		for _, v := range args.Entry {
+			if w.logs.find(v.Index) != nil {
+				continue
+			}
+
+			if err := w.AddLog(v); err != nil {
+				return err
+			}
 		}
 
-		if err := w.AddLog(v); err != nil {
-			return err
-		}
+		w.logs.sort()
 	}
-
-	w.logs.sort()
 
 	if args.LeaderCommit > w.commitIndex {
 		w.commitIndex = args.LeaderCommit
