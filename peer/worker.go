@@ -60,10 +60,10 @@ type Worker struct {
 	term   int
 	leader string
 
-	pingDuration time.Duration
-	pingTicker   *time.Ticker
-	voteDuration time.Duration
-	voteTimer    *time.Timer
+	heartBeatDuration time.Duration
+	heartBeatTicker   *time.Ticker
+	voteDuration      time.Duration
+	voteTimer         *time.Timer
 }
 
 type WorkerOption func(*Worker)
@@ -74,9 +74,9 @@ func NewWorker(name string) *Worker {
 	w.logs = WorkerLogs{}
 	w.term = 0
 
-	w.pingDuration = 1 * time.Second
-	w.pingTicker = time.NewTicker(w.pingDuration)
-	w.pingTicker.Stop()
+	w.heartBeatDuration = 1 * time.Second
+	w.heartBeatTicker = time.NewTicker(w.heartBeatDuration)
+	w.heartBeatTicker.Stop()
 
 	return w
 }
@@ -171,44 +171,92 @@ func (w *Worker) State() WorkerState {
 
 var ErrNotLeader = fmt.Errorf("not leader")
 
-func (w *Worker) StartPingTicker() {
-	w.ResetPingTicker()
+func (w *Worker) SendHeartBeat() error {
+	index := w.logs[len(w.logs)-1].Index
+	eg := errgroup.Group{}
 
-	for {
-		<-w.pingTicker.C
-		if w.Leader() != w.Name() {
-			break
-		}
+	for k := range w.ConnectedPeers() {
+		k := k
 
-		eg := errgroup.Group{}
-		for k := range w.ConnectedPeers() {
-			k := k
+		eg.Go(func() error {
+			for {
+				reply := HeartBeatReply{}
 
-			eg.Go(func() error {
-				err := w.RemoteCallWithTimeout(k, "Worker.Ping", PingArgs{
-					Leader: w.Name(),
-					Term:   w.Term(),
-				}, &PingReply{}, w.pingDuration/2)
+				entry := WorkerLogs{}
+				for _, v := range w.logs {
+					if v.Index >= w.nextIndices[k] {
+						entry = append(entry, v)
+					}
+				}
+
+				err := w.RemoteCallWithTimeout(k, "Worker.HeartBeat", HeartBeatArgs{
+					Leader:       w.Name(),
+					Term:         w.Term(),
+					Entry:        entry,
+					PrevLogIndex: w.nextIndices[k] - 1,
+					LeaderCommit: w.commitIndex,
+				}, &reply, w.heartBeatDuration/2)
 				if err != nil {
 					return err
 				}
 
-				return nil
-			})
+				if reply.Updated {
+					w.nextIndices[k] = index + 1
+					w.matchIndices[k] = index
+					return nil
+				}
+
+				w.nextIndices[k]--
+			}
+		})
+	}
+
+	err := eg.Wait()
+	if err != nil {
+		return err
+	}
+
+	for i := w.commitIndex + 1; i <= index; {
+		committed := 0
+		for _, v := range w.matchIndices {
+			if v >= i {
+				committed++
+			}
 		}
 
-		err := eg.Wait()
+		if committed > len(w.ConnectedPeers())/2 || len(w.ConnectedPeers()) == 0 {
+			w.commitIndex = i
+			i++
+		} else {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (w *Worker) StartHeartBeatTicker() {
+	w.ResetHeartBeatTicker()
+
+	for {
+		<-w.heartBeatTicker.C
+		if w.Leader() != w.Name() {
+			break
+		}
+
+		err := w.SendHeartBeat()
+
 		if errors.Is(err, ErrNotLeader) {
 			break
 		}
 	}
 
-	w.pingTicker.Stop()
+	w.heartBeatTicker.Stop()
 	go w.StartVoteTimer()
 }
 
-func (w *Worker) ResetPingTicker() {
-	w.pingTicker.Reset(w.pingDuration)
+func (w *Worker) ResetHeartBeatTicker() {
+	w.heartBeatTicker.Reset(w.heartBeatDuration)
 }
 
 func (w *Worker) StartVoteTimer() {
@@ -228,7 +276,7 @@ func (w *Worker) StartVoteTimer() {
 
 		eg.Go(func() error {
 			reply := VoteReply{}
-			err := w.RemoteCallWithTimeout(k, "Worker.Vote", VoteArgs{w.Name(), w.Term()}, &reply, w.pingDuration/2)
+			err := w.RemoteCallWithTimeout(k, "Worker.Vote", VoteArgs{w.Name(), w.Term()}, &reply, w.heartBeatDuration/2)
 			if err != nil {
 				return err
 			}
@@ -259,7 +307,7 @@ func (w *Worker) StartVoteTimer() {
 		w.SetLeader(w.Name())
 		w.UnlockMutex()
 
-		go w.StartPingTicker()
+		go w.StartHeartBeatTicker()
 		return
 	}
 

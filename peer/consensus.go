@@ -4,7 +4,7 @@ import (
 	"log"
 )
 
-type PingArgs struct {
+type HeartBeatArgs struct {
 	Leader string
 	Term   int
 
@@ -13,11 +13,11 @@ type PingArgs struct {
 	LeaderCommit int
 }
 
-type PingReply struct {
+type HeartBeatReply struct {
 	Updated bool
 }
 
-func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
+func (w *Worker) HeartBeat(args HeartBeatArgs, reply *HeartBeatReply) error {
 	w.LockMutex()
 	defer w.UnlockMutex()
 
@@ -52,6 +52,10 @@ func (w *Worker) Ping(args PingArgs, reply *PingReply) error {
 		if w.logs[len(w.logs)-1].Index < w.commitIndex {
 			w.commitIndex = w.logs[len(w.logs)-1].Index
 		}
+	}
+
+	for k := range w.nextIndices {
+		w.nextIndices[k] = w.commitIndex
 	}
 
 	reply.Updated = true
