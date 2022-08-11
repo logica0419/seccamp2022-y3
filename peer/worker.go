@@ -101,7 +101,7 @@ func NewWorker(name string) *Worker {
 	w.matchIndices = make(map[string]int)
 	w.term = 0
 
-	w.heartBeatDuration = 1 * time.Second
+	w.heartBeatDuration = 100 * time.Millisecond
 	w.heartBeatTicker = time.NewTicker(w.heartBeatDuration)
 	w.heartBeatTicker.Stop()
 
@@ -131,7 +131,7 @@ func (w *Worker) Rand() *rand.Rand {
 func (w *Worker) LinkNode(n *Node) {
 	w.node = n
 
-	w.voteDuration = time.Duration(w.Rand().ExpFloat64()*1000)*time.Millisecond + time.Second*3/2
+	w.voteDuration = (time.Duration(w.Rand().ExpFloat64()*100) + 150) * time.Millisecond
 	w.voteTimer = time.NewTimer(w.voteDuration)
 	go w.StartVoteTimer()
 }
