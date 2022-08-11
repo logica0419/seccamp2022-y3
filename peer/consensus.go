@@ -184,6 +184,8 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 		return err
 	}
 
+	go func() { _ = w.SendHeartBeat() }()
+
 	reply.After = w.WorkerState()
 
 	log.Println(reply.Before.String(), "|", reply.After.String())
