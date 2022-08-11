@@ -17,6 +17,16 @@ func State(name string) (string, error) {
 	return reply.State.String(), nil
 }
 
+func LogState(name string) (string, error) {
+	var reply peer.RequestLogStateReply
+	err := sendRPC(name, "Worker.RequestLogState", peer.RequestLogStateArgs{}, &reply)
+	if err != nil {
+		return "", err
+	}
+
+	return reply.State.String(), nil
+}
+
 func Log(name string) (string, error) {
 	var reply peer.RequestLogReply
 	err := sendRPC(name, "Worker.RequestLog", peer.RequestLogArgs{}, &reply)
