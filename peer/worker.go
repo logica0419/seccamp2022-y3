@@ -14,12 +14,35 @@ import (
 )
 
 type WorkerState struct {
-	Term  int
-	Value int
+	Value  int
+	Leader string
+	Term   int
 }
 
-func (s *WorkerState) String() string {
-	return fmt.Sprintf("Value: %d, Term: %d", s.Value, s.Term)
+func (s *WorkerState) String() (state string) {
+	return fmt.Sprintf("Value: %d | Leader: %s, Term: %d\n", s.Value, s.Leader, s.Term)
+}
+
+type LogState struct {
+	CommitIndex  int
+	NextIndices  map[string]int
+	MatchIndices map[string]int
+}
+
+func (s *LogState) String() (state string) {
+	state += fmt.Sprintf("CommitIndex: %d\n", s.CommitIndex)
+
+	state += "NextIndices\n"
+	for k, v := range s.NextIndices {
+		state += fmt.Sprintf("  [%s]: %d\n0", k, v)
+	}
+
+	state += "MatchIndices\n"
+	for k, v := range s.MatchIndices {
+		state += fmt.Sprintf("  [%s]: %d\n", k, v)
+	}
+
+	return
 }
 
 type WorkerLog struct {
@@ -151,7 +174,7 @@ func (w *Worker) DeleteLastLog() error {
 	return nil
 }
 
-func (w *Worker) State() WorkerState {
+func (w *Worker) WorkerState() WorkerState {
 	temp := 0
 
 	for _, v := range w.logs {
@@ -168,8 +191,17 @@ func (w *Worker) State() WorkerState {
 	}
 
 	return WorkerState{
-		Term:  w.term,
-		Value: temp,
+		Value:  temp,
+		Leader: w.leader,
+		Term:   w.term,
+	}
+}
+
+func (w *Worker) LogState() LogState {
+	return LogState{
+		CommitIndex:  w.commitIndex,
+		NextIndices:  w.nextIndices,
+		MatchIndices: w.matchIndices,
 	}
 }
 

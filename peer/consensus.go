@@ -105,7 +105,24 @@ func (w *Worker) RequestState(args RequestStateArgs, reply *RequestStateReply) e
 	w.LockMutex()
 	defer w.UnlockMutex()
 
-	reply.State = w.State()
+	reply.State = w.WorkerState()
+
+	log.Println(reply.State.String())
+
+	return nil
+}
+
+type RequestLogStateArgs struct{}
+
+type RequestLogStateReply struct {
+	State LogState
+}
+
+func (w *Worker) RequestLogState(args RequestLogStateArgs, reply *RequestLogStateReply) error {
+	w.LockMutex()
+	defer w.UnlockMutex()
+
+	reply.State = w.LogState()
 
 	log.Println(reply.State.String())
 
@@ -152,7 +169,7 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 	w.LockMutex()
 	defer w.UnlockMutex()
 
-	reply.Before = w.State()
+	reply.Before = w.WorkerState()
 
 	index := -1
 	if len(w.logs) > 0 {
@@ -167,7 +184,7 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 		return err
 	}
 
-	reply.After = w.State()
+	reply.After = w.WorkerState()
 
 	log.Println(reply.Before.String(), "|", reply.After.String())
 
