@@ -158,7 +158,7 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 	if w.Leader() != w.Name() {
 		log.Printf("proxying RPC to leader(%s)", w.Leader())
 
-		err := w.RemoteCall(w.Leader(), "Worker.UpdateState", args, &reply)
+		err := w.RemoteCallWithTimeout(w.Leader(), "Worker.UpdateState", args, &reply, w.heartBeatDuration/2)
 		if err != nil {
 			return err
 		}
