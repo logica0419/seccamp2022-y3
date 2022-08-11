@@ -260,12 +260,9 @@ func (w *Worker) SendHeartBeat() error {
 		})
 	}
 
-	err := eg.Wait()
-	if err != nil {
-		return err
-	}
+	_ = eg.Wait()
 
-	for i := w.commitIndex + 1; i <= index; {
+	for i := w.commitIndex + 1; i <= index; i++ {
 		committed := 0
 		for _, v := range w.matchIndices {
 			if v >= i {
@@ -273,12 +270,11 @@ func (w *Worker) SendHeartBeat() error {
 			}
 		}
 
-		if committed > len(w.ConnectedPeers())/2 || len(w.ConnectedPeers()) == 0 {
-			w.commitIndex = i
-			i++
-		} else {
+		if committed <= len(w.ConnectedPeers())/2 && len(w.ConnectedPeers()) != 0 {
 			break
 		}
+
+		w.commitIndex = i
 	}
 
 	return nil
