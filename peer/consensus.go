@@ -186,7 +186,7 @@ func (w *Worker) UpdateState(args UpdateStateArgs, reply *UpdateStateReply) erro
 		return err
 	}
 
-	go func() { _ = w.SendHeartBeat() }()
+	_ = w.SendHeartBeat()
 
 	reply.After = w.WorkerState()
 
