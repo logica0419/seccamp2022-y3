@@ -33,7 +33,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("> [ERROR] %s\n\n", err)
 		} else {
-			fmt.Printf("> %s\n\n ", result)
+			fmt.Printf("> %s\n\n", result)
 		}
 	}
 }
